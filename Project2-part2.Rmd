@@ -1,5 +1,5 @@
 ---
-title: "part2"
+title: "Part2"
 author: "Danshu"
 date: "2023-03-23"
 output: html_document
@@ -9,22 +9,119 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+```{r load-data}
+df1 <- read.csv("houseprices.csv")
+df2 <- read.csv("houseprices2.csv")
 ```
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+Load packages:
+  
+```{r packs, message = FALSE}
+# load packages
+library(ggplot2)
+library(tidyverse)
+library(gridExtra)
+library(dplyr)
+library(countrycode)
+library(arm)
+library(visdat)
+library(patchwork)
+library(hrbrthemes)
+library(viridis)
+library(Metrics)
+library(caret)
+library(interactions)
+library(DescTools)
+library(naivebayes)
+library(psych)
+library(caret)
+theme_set(theme_classic())
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r setting}
+options(scipen = 999)
+```
+
+Data pre-processing:
+
+```{r pre-processing}
+# view missings
+vis_miss(df1)
+```
+
+
+```{r polt-price}
+# visualization of distribution of house sale prices
+hist(df1$SalePrice, main = "SalePrice", xlab = "price")
+boxplot(df1$SalePrice, main = "SalePrice",xlab = "price", border = "brown",horizontal = TRUE)
+```
+
+```{r 1}
+# check detail for each variable in data set
+str(df1)
+```
+```{r 2}
+d1<- df1%>%
+  mutate(TotalBath = FullBath + HalfBath)
+d1["GarageType"][is.na(d1["GarageType"])] <- "No Garage"
+```
+
+
+```{r 3}
+# choose variables which need to be factorized
+varschr <- c("Street", "LotShape", "LandContour", "Utilities", "Neighborhood", "BldgType", "HouseStyle","RoofStyle", "Foundation", "Heating", "CentralAir","Electrical","KitchenQual","GarageType")
+
+# factor variables
+d1[,varschr] <- lapply(d1[,varschr] , factor)
+
+#check detail for each variable in data set after factorization
+str(d1)
+```
+```{r 4}
+# look varaibles
+sapply(lapply(d1, unique), length)
+```
+
+
+```{r 6}
+# drop variables which are not useful for the following logistic regression models
+d2 <- subset(d1, select = -c(Id,FullBath,HalfBath))
+lapply(d2[varschr], table)
+```
+
+
+```{r 7}
+
+d2 <- subset(d2, select = -c(Utilities))
+d2 <- na.omit(d2)
+```
+
+
+```{r}
+match(c("Mix"),d2$Electrical)
+match(c("Floor"),d2$Heating)
+N <- c(1:398,400:1321,1323:dim(d2)[1])
+```
+
+```{r}
+sapply(lapply(d2, unique), length)
+```
+
+```{r 6}
+preds1 <- numeric(dim(d2)[1]-2)
+absolute_error <- numeric(dim(d2)[1]-2)
+for (i in N){
+  fit1 <- lm(SalePrice~.,data=d2[-i,])
+  preds1[i] <- predict(fit1,d2[i,])
+  absolute_error[i] <- abs(preds1[i]-d2$SalePrice[i])
+  }
+summary(fit1)
+```
+
+```{r}
+Mean_error <- sum(absolute_error)/length(N)
+```
+
+
+
+
