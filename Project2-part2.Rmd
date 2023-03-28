@@ -124,6 +124,7 @@ Mean_error <- sum(absolute_error)/length(N)
 
 
 ```{r selection}
+#part 2
 ##three variables
 intercept_only <- lm(d2$SalePrice ~ 1, data=d2)
 full <- lm(d2$SalePrice ~ ., data=d2)
@@ -133,7 +134,6 @@ forward$anova
 
 ```{r 7}
 d3 <- subset(d2, select = c(SalePrice,OverallQual,GrLivArea,Neighborhood))
-
 ```
 
 ```{r 8}
@@ -150,7 +150,7 @@ Mean_error2 <- sum(absolute_error2)/dim(d3)[1]
 
 ```{r 9}
 ##more variables
-forward2 <- stepAIC(intercept_only, scope=formula(full), direction='forward', trace=F)
+forward2 <- stepAIC(intercept_only, scope=formula(full), direction='forward', trace=F) #best model
 ```
 
 ```{r 10}
@@ -172,5 +172,72 @@ Mean_error3 <- sum(absolute_error3)/dim(d4)[1]
 
 
 ```{r 12}
-
+#part3
+plot(fit1)
 ```
+
+```{r 13}
+# check the normality of SalePrice
+qqnorm(d2$SalePrice, ylab = "SalePrice")
+qqline(d2$SalePrice)
+hist(d2$SalePrice, main = "SalePrice", xlab = "price")
+```
+
+```{r 14}
+# add log
+d5 <- d2%>%
+  mutate(LogSalePrice = log(SalePrice))
+qqnorm(d5$LogSalePrice, ylab = "Log(SalePrice)")
+qqline(d5$LogSalePrice)
+hist(d5$LogSalePrice, main = "Log(SalePrice)", xlab = "price")
+```
+
+```{r 15}
+d5 <- subset(d5, select = -c(SalePrice))
+```
+
+```{r 16}
+preds4 <- numeric(dim(d5)[1]-2)
+absolute_error4 <- numeric(dim(d5)[1]-2)
+for (i in N){
+  fit4 <- lm(LogSalePrice~.,data=d5[-i,])
+  preds4[i] <- predict(fit4,d5[i,])
+  absolute_error4[i] <- abs(exp(preds4[i])-exp(d5$LogSalePrice[i]))
+  }
+summary(fit4)
+Mean_error4 <- sum(absolute_error4)/length(N)
+```
+
+```{r 17}
+# interaction
+fit5 <-lm(LogSalePrice~(LotArea + Street + LotShape + LandContour + Neighborhood + BldgType + HouseStyle + OverallQual + OverallCond + YearBuilt + RoofStyle + Foundation + TotalBsmtSF + Heating + CentralAir + Electrical + GrLivArea + BedroomAbvGr + KitchenAbvGr + KitchenQual + TotRmsAbvGrd + Fireplaces + GarageType + GarageArea + MoSold + YrSold + TotalBath)*OverallQual, data = d5)
+fit6 <- step(fit5, trace=F)
+summary(fit6)
+```
+
+```{r interaction-plot}
+# interaction between OverallQual and LandContour
+interact_plot(fit5, pred = OverallQual, modx = LandContour) + labs(y ="Log(SalePrice)", x = "Overall material and finish quality")
+```
+
+
+
+```{r 18}
+fit7 <-lm(LogSalePrice~LotArea + Street + LotShape + LandContour + Neighborhood + BldgType + HouseStyle + OverallQual + OverallCond + YearBuilt + RoofStyle + Foundation + TotalBsmtSF + Heating + CentralAir + Electrical + GrLivArea + BedroomAbvGr + KitchenAbvGr + KitchenQual + TotRmsAbvGrd + Fireplaces + GarageType + GarageArea + MoSold + YrSold + TotalBath + LandContour:OverallQual, data = d5)
+summary(fit7)
+formula <- formula(fit7)
+```
+
+```{r 19}
+preds5 <- numeric(dim(d5)[1]-2)
+absolute_error5 <- numeric(dim(d5)[1]-2)
+for (i in N){
+  fit8 <- lm(formula,data=d5[-i,])
+  preds5[i] <- predict(fit8,d5[i,])
+  absolute_error5[i] <- abs(exp(preds5[i])-exp(d5$LogSalePrice[i]))
+  }
+summary(fit8)
+Mean_error5 <- sum(absolute_error5)/length(N)
+```
+
+
