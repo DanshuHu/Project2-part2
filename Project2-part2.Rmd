@@ -60,6 +60,7 @@ boxplot(df1$SalePrice, main = "SalePrice",xlab = "price", border = "brown",horiz
 # check detail for each variable in data set
 str(df1)
 ```
+
 ```{r 2}
 d1<- df1%>%
   mutate(TotalBath = FullBath + HalfBath)
@@ -91,7 +92,6 @@ lapply(d2[varschr], table)
 
 
 ```{r 7}
-
 d2 <- subset(d2, select = -c(Utilities))
 d2 <- na.omit(d2)
 ```
@@ -123,5 +123,54 @@ Mean_error <- sum(absolute_error)/length(N)
 ```
 
 
+```{r selection}
+##three variables
+intercept_only <- lm(d2$SalePrice ~ 1, data=d2)
+full <- lm(d2$SalePrice ~ ., data=d2)
+forward <- stepAIC(intercept_only,  scope=formula(full), steps = 3, direction='forward', trace=F)
+forward$anova
+```
+
+```{r 7}
+d3 <- subset(d2, select = c(SalePrice,OverallQual,GrLivArea,Neighborhood))
+
+```
+
+```{r 8}
+preds2 <- numeric(dim(d3)[1])
+absolute_error2 <- numeric(dim(d3)[1])
+for (i in 1:dim(d3)[1]){
+  fit2 <- lm(SalePrice~.,data=d3[-i,])
+  preds2[i] <- predict(fit2,d3[i,])
+  absolute_error2[i] <- abs(preds2[i]-d3$SalePrice[i])
+  }
+summary(fit2)
+Mean_error2 <- sum(absolute_error2)/dim(d3)[1]
+```
+
+```{r 9}
+##more variables
+forward2 <- stepAIC(intercept_only, scope=formula(full), direction='forward', trace=F)
+```
+
+```{r 10}
+d4 <- forward2$model
+names(d4)[names(d4) == "d2$SalePrice"] <- "SalePrice"
+```
+
+```{r 11}
+preds3 <- numeric(dim(d4)[1])
+absolute_error3 <- numeric(dim(d4)[1])
+for (i in 1:dim(d4)[1]){
+  fit3 <- lm(SalePrice~.,data=d4[-i,])
+  preds3[i] <- predict(fit3,d4[i,])
+  absolute_error3[i] <- abs(preds3[i]-d4$SalePrice[i])
+  }
+summary(fit3)
+Mean_error3 <- sum(absolute_error3)/dim(d4)[1]
+```
 
 
+```{r 12}
+
+```
