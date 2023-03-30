@@ -35,6 +35,9 @@ library(DescTools)
 library(naivebayes)
 library(psych)
 library(caret)
+library(corrplot)
+library(glmnet)
+library(randomForest)
 theme_set(theme_classic())
 ```
 
@@ -42,18 +45,13 @@ theme_set(theme_classic())
 options(scipen = 999)
 ```
 
-Data pre-processing:
+# Section 1
+
+## Data pre-processing:
 
 ```{r pre-processing}
 # view missings
 vis_miss(df1)
-```
-
-
-```{r polt-price}
-# visualization of distribution of house sale prices
-hist(df1$SalePrice, main = "SalePrice", xlab = "price")
-boxplot(df1$SalePrice, main = "SalePrice",xlab = "price", border = "brown",horizontal = TRUE)
 ```
 
 ```{r 1}
@@ -62,52 +60,52 @@ str(df1)
 ```
 
 ```{r 2}
+# combine variables which are similar
 d1<- df1%>%
   mutate(TotalBath = FullBath + HalfBath)
+
+#replace missings in GarageType since GarageArea = 0
 d1["GarageType"][is.na(d1["GarageType"])] <- "No Garage"
+
+# remove real NA
+d1 <- na.omit(d1)
 ```
 
 
 ```{r 3}
-# choose variables which need to be factorized
-varschr <- c("Street", "LotShape", "LandContour", "Utilities", "Neighborhood", "BldgType", "HouseStyle","RoofStyle", "Foundation", "Heating", "CentralAir","Electrical","KitchenQual","GarageType")
+
+chars1 <- colnames(select_if(d1,is.character))
 
 # factor variables
-d1[,varschr] <- lapply(d1[,varschr] , factor)
+d1[,chars1] <- lapply(d1[,chars1] , factor)
 
 #check detail for each variable in data set after factorization
 str(d1)
 ```
+
 ```{r 4}
-# look varaibles
-sapply(lapply(d1, unique), length)
-```
-
-
-```{r 6}
-# drop variables which are not useful for the following logistic regression models
+# drop variables which are not useful 
 d2 <- subset(d1, select = -c(Id,FullBath,HalfBath))
-lapply(d2[varschr], table)
+
+lapply(d2[chars1], table)
 ```
 
-
-```{r 7}
+```{r 5}
 d2 <- subset(d2, select = -c(Utilities))
-d2 <- na.omit(d2)
 ```
 
-
-```{r}
+## Model 1
+```{r 6}
+# find the index for the type of variables which only have one obsevation
 match(c("Mix"),d2$Electrical)
 match(c("Floor"),d2$Heating)
+```
+
+```{r 7}
+# remove the obsevations find above
 N <- c(1:398,400:1321,1323:dim(d2)[1])
-```
 
-```{r}
-sapply(lapply(d2, unique), length)
-```
-
-```{r 6}
+# linear regression with LOOCV method
 preds1 <- numeric(dim(d2)[1]-2)
 absolute_error <- numeric(dim(d2)[1]-2)
 for (i in N){
@@ -116,27 +114,24 @@ for (i in N){
   absolute_error[i] <- abs(preds1[i]-d2$SalePrice[i])
   }
 summary(fit1)
-```
-
-```{r}
 Mean_error <- sum(absolute_error)/length(N)
 ```
 
-
-```{r selection}
-#part 2
-##three variables
+# Section 2
+## Model 2
+```{r 8}
+##  select three most impact variables
 intercept_only <- lm(d2$SalePrice ~ 1, data=d2)
 full <- lm(d2$SalePrice ~ ., data=d2)
 forward <- stepAIC(intercept_only,  scope=formula(full), steps = 3, direction='forward', trace=F)
 forward$anova
 ```
 
-```{r 7}
-d3 <- subset(d2, select = c(SalePrice,OverallQual,GrLivArea,Neighborhood))
-```
 
-```{r 8}
+```{r 9}
+d3 <- subset(d2, select = c(SalePrice,OverallQual,GrLivArea,Neighborhood))
+
+# predict performance with three variables
 preds2 <- numeric(dim(d3)[1])
 absolute_error2 <- numeric(dim(d3)[1])
 for (i in 1:dim(d3)[1]){
@@ -148,17 +143,19 @@ summary(fit2)
 Mean_error2 <- sum(absolute_error2)/dim(d3)[1]
 ```
 
-```{r 9}
-##more variables
-forward2 <- stepAIC(intercept_only, scope=formula(full), direction='forward', trace=F) #best model
-```
+## Model 3
 
 ```{r 10}
-d4 <- forward2$model
-names(d4)[names(d4) == "d2$SalePrice"] <- "SalePrice"
+# best model
+## more variables
+forward2 <- stepAIC(intercept_only, scope=formula(full), direction='forward', trace=F) 
 ```
 
 ```{r 11}
+d4 <- forward2$model
+names(d4)[names(d4) == "d2$SalePrice"] <- "SalePrice"
+
+# predict performance with the best model
 preds3 <- numeric(dim(d4)[1])
 absolute_error3 <- numeric(dim(d4)[1])
 for (i in 1:dim(d4)[1]){
@@ -170,21 +167,24 @@ summary(fit3)
 Mean_error3 <- sum(absolute_error3)/dim(d4)[1]
 ```
 
-
+# Section 3
 ```{r 12}
-#part3
+# check assumptions of model in part 1
+par(mfrow=c(2,2))
 plot(fit1)
 ```
-
 ```{r 13}
 # check the normality of SalePrice
+par(mfrow=c(1,2))
 qqnorm(d2$SalePrice, ylab = "SalePrice")
 qqline(d2$SalePrice)
 hist(d2$SalePrice, main = "SalePrice", xlab = "price")
 ```
 
 ### log-transformation
+
 ```{r 14}
+par(mfrow=c(1,2))
 # add log
 d5 <- d2%>%
   mutate(LogSalePrice = log(SalePrice))
@@ -195,9 +195,8 @@ hist(d5$LogSalePrice, main = "Log(SalePrice)", xlab = "price")
 
 ```{r 15}
 d5 <- subset(d5, select = -c(SalePrice))
-```
 
-```{r 16}
+# check performance of the data after log transformation
 preds4 <- numeric(dim(d5)[1]-2)
 absolute_error4 <- numeric(dim(d5)[1]-2)
 for (i in N){
@@ -209,15 +208,9 @@ summary(fit4)
 Mean_error4 <- sum(absolute_error4)/length(N)
 ```
 
-```{r 16, fig.height=10,fig.width=10}
-
-#d5.cor = cor(select_if(d5[,-28],is.numeric))
-
-#corrplot(d5.cor, method="color",tl.col="black",number.cex=2.5,tl.cex = 2.5,addCoef.col = "black",cl.cex = 2.5)
-```
+# Interaction
 
 ```{r 17}
-# interaction
 fit5 <-lm(LogSalePrice~(LotArea + Street + LotShape + LandContour + Neighborhood + BldgType + HouseStyle + OverallQual + OverallCond + YearBuilt + RoofStyle + Foundation + TotalBsmtSF + Heating + CentralAir + Electrical + GrLivArea + BedroomAbvGr + KitchenAbvGr + KitchenQual + TotRmsAbvGrd + Fireplaces + GarageType + GarageArea + MoSold + YrSold + TotalBath)*OverallQual, data = d5)
 fit6 <- step(fit5, trace=F)
 summary(fit6)
@@ -228,7 +221,7 @@ summary(fit6)
 interact_plot(fit5, pred = OverallQual, modx = LandContour) + labs(y ="Log(SalePrice)", x = "Overall material and finish quality")
 ```
 
-
+### fit model with possible interation
 
 ```{r 18}
 fit7 <-lm(LogSalePrice~LotArea + Street + LotShape + LandContour + Neighborhood + BldgType + HouseStyle + OverallQual + OverallCond + YearBuilt + RoofStyle + Foundation + TotalBsmtSF + Heating + CentralAir + Electrical + GrLivArea + BedroomAbvGr + KitchenAbvGr + KitchenQual + TotRmsAbvGrd + Fireplaces + GarageType + GarageArea + MoSold + YrSold + TotalBath + LandContour:OverallQual, data = d5)
@@ -237,6 +230,7 @@ formula <- formula(fit7)
 ```
 
 ```{r 19}
+# perdiction performance of new model
 preds5 <- numeric(dim(d5)[1]-2)
 absolute_error5 <- numeric(dim(d5)[1]-2)
 for (i in N){
@@ -248,13 +242,28 @@ summary(fit8)
 Mean_error5 <- sum(absolute_error5)/length(N)
 ```
 
-```{r}
+# Section 4
+
+## Data preprocessing
+
+```{r 20}
+# combine variables which are similar
+df2<- df2%>%
+  mutate(TotalBath = FullBath + HalfBath,
+         BsmtTotalBath = BsmtFullBath + BsmtHalfBath)
+df2<- subset(df2,select=-c(FullBath,HalfBath,BsmtFullBath,BsmtHalfBath))
+```
+
+### Missings
+
+```{r 21}
+# check missings for new data
 missing <- df2 %>% is.na() %>% colSums()
 sort(missing,decreasing = TRUE)
 ```
 
-```{r}
-# Categorical vairbales
+#### Categorical vairbales
+```{r 22}
 # some NA entries in the data sets actually are not missing
 # etc. rather than representing a missing value. These values are replaced accordingly
 
@@ -274,8 +283,8 @@ df2$Fence[is.na(df2$Fence)] = "No fence"
 df2$MiscFeature[is.na(df2$MiscFeature)] = "None"
 ```
 
-```{r}
-# Numeric variables
+#### Numeric variables
+```{r 23}
 #replace missing values in LotFrontage column in training and test sets with median
 df2$LotFrontage[is.na(df2$LotFrontage)] = median(df2$LotFrontage, na.rm = TRUE)
 
@@ -284,20 +293,27 @@ df2$LotFrontage[is.na(df2$LotFrontage)] = median(df2$LotFrontage, na.rm = TRUE)
 df2$GarageYrBlt[is.na(df2$GarageYrBlt)] = 0
 ```
 
-```{r}
+#### Actual Missings
+```{r 24}
 # Remove the values which are missing
 df2 <- na.omit(df2)
+```
+
+```{r 25}
+# Delete ID
 df_4 <- subset(df2, select = -c(Id))
+# Factorize category variables
 chars<-colnames(select_if(df_4, is.character))
 df_4[,chars] <- lapply(df_4[,chars], factor)
 str(df_4)
 ```
 
-```{r}
+```{r 26}
 lapply(select_if(df_4, is.factor), table)
 ```
 
-```{r}
+```{r 27}
+# Find index of the type of variables which only has one observation
 match(c("PosA","RRAe","RRAn"),df_4$Condition2)
 
 match(c("ClyTile","Membran","Metal","Roll"),df_4$RoofMatl)
@@ -318,16 +334,19 @@ match(c("Sev"),df_4$Functional)
 
 match(c("TenC"),df_4$MiscFeature)
 
+# delete Utilities
 df_4 <- subset(df_4,select = c(-Utilities))
-  
+# positons   
 drop_num <- c(582,1225,998,1291,271,121,1269,1006,1363,1182,1363,594,250,1314,325,398,664,1378)
-N4 <- 1:dim(df_4)[1]
-N4 <- N4[-drop_num]
-
 ```
 
-```{r}
+## simple linear regression
+
+```{r 28}
 # simple linear regression
+N4 <- 1:dim(df_4)[1]
+N4 <- N4[-drop_num]
+# check performance
 pred4_1 <- numeric(dim(df_4)[1]-18)
 ae4_1 <- numeric(dim(df_4)[1]-18)
 for (i in N4){
@@ -338,29 +357,25 @@ for (i in N4){
 summary(fit4_1)
 ME4_1 <- sum(ae4_1)/length(N4)
 ```
-
-
-
-
-
-```{r}
+## Variable selection model
+```{r 29}
+# forward selection
 intercepts <- lm(df_4$SalePrice ~ 1, data=df_4)
 full4 <- lm(df_4$SalePrice ~ ., data=df_4)
 forward4 <- stepAIC(intercepts,  scope=formula(full4), direction='forward', trace=F)
-
+# data with selected variables
 df_41 <- forward4$model
 ```
 
-```{r}
+```{r 30}
+# rename new data
 names(df_41)[names(df_41) == "df_4$SalePrice"] <- "SalePrice"
-```
-
-
-```{r}
+# check number of obsevations in each type
 lapply(select_if(df_41, is.factor), table)
 ```
 
-```{r}
+```{r 31}
+# find index 
 match(c("PosA","RRAe","RRAn"),df_41$Condition2)
 
 match(c("ClyTile","Membran","Metal","Roll"),df_41$RoofMatl)
@@ -368,16 +383,19 @@ match(c("ClyTile","Membran","Metal","Roll"),df_41$RoofMatl)
 match(c("AsphShn","CBlock","ImStucc"),df_41$Exterior1st)
 
 match(c("Sev"),df_41$Functional)
-  
+
+# positions
 drop_num2 <- c(582,1225,998,1291,271,121,1269,1006,1363,1182,664)
-N4_2 <- 1:dim(df_41)[1]
-N4_2 <- N4_2[-drop_num2]
+
 
 ```
 
-
-```{r }
+```{r 32}
 # variable selection
+N4_2 <- 1:dim(df_41)[1]
+N4_2 <- N4_2[-drop_num2]
+
+# perfomance(LOOCV)
 pred4_2 <- numeric(dim(df_41)[1]-11)
 ae4_2 <- numeric(dim(df_41)[1]-11)
 for (i in N4_2){
@@ -389,15 +407,15 @@ summary(fit4_2)
 ME4_2 <- sum(ae4_2)/length(N4_2)
 ```
 
+## random forest
 
-```{r}
-library(randomForest)
-# random forest
+```{r 33}
+# peridict and check performance
 pred4_3 <- numeric(dim(df_4)[1]-18)
 ae4_3 <- numeric(dim(df_4)[1]-18)
 for (i in N4){
   set.seed(1)
-  fit4_3 <- randomForest(SalePrice~., data=df_4[-i,],ntree=10)
+  fit4_3 <- randomForest(SalePrice~., data=df_4[-i,],ntree=100)
   pred4_3[i] <- predict(fit4_3, df_4[i,])
   ae4_3[i] <- abs(pred4_3[i]-df_4$SalePrice[i])
   }
@@ -405,11 +423,12 @@ summary(fit4_3)
 ME4_3 <- sum(ae4_3)/length(N4)
 ```
 
-```{r}
-library(glmnet)
 
+## Lasso Regression
+
+```{r 34}
 y <- df_4$SalePrice
-x <- data.matrix(df_4[,-79])
+x <- data.matrix(df_4[,-75])
 #perform k-fold cross-validation to find optimal lambda value
 cv_model <- cv.glmnet(x, y, alpha = 1, nfolds = 10)
 
@@ -440,6 +459,3 @@ for (i in 1:n) {
 }
 ME4_4 <-mean(error)
 ```
-
-
-
