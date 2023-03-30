@@ -317,20 +317,20 @@ N4 <- N4[-drop_num]
 
 ```
 
-
-```{r model4-1}
-library(randomForest)
-# random forest
-pred4_3 <- numeric(dim(df_4)[1]-18)
-ae4_3 <- numeric(dim(df_4)[1]-18)
+```{r}
+# simple linear regression
+pred4_1 <- numeric(dim(df_4)[1]-18)
+ae4_1 <- numeric(dim(df_4)[1]-18)
 for (i in N4){
-  fit4_3 <- randomForest(SalePrice ~ ., data=df_4)
-  pred4_3[i] <- predict(df_4[i,],fit4_3)
-  ae4_3[i] <- abs(pred4_3[i]-df_4$SalePrice[i])
+  fit4_1 <- lm(SalePrice~., data=df_4[-i,])
+  pred4_1[i] <- predict(fit4_1, df_4[i,])
+  ae4_1[i] <- abs(pred4_1[i]-df_4$SalePrice[i])
   }
-summary(fit4_3)
-ME4_3 <- sum(ae4_3)/length(N4)
+summary(fit4_1)
+ME4_1 <- sum(ae4_1)/length(N4)
 ```
+
+
 
 
 
@@ -380,9 +380,21 @@ summary(fit4_2)
 ME4_2 <- sum(ae4_2)/length(N4_2)
 ```
 
-```{r}
-set.seed(1)
 
+```{r}
+library(randomForest)
+# random forest
+pred4_3 <- numeric(dim(df_4)[1]-18)
+ae4_3 <- numeric(dim(df_4)[1]-18)
+for (i in N4){
+  set.seed(1)
+  fit4_3 <- randomForest(SalePrice~., data=df_4[-i,],ntree=10)
+  pred4_3[i] <- predict(fit4_3, df_4[i,])
+  ae4_3[i] <- abs(pred4_3[i]-df_4$SalePrice[i])
+  }
+summary(fit4_3)
+ME4_3 <- sum(ae4_3)/length(N4)
 ```
+
 
 
