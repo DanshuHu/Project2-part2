@@ -284,6 +284,7 @@ df2$LotFrontage[is.na(df2$LotFrontage)] = median(df2$LotFrontage, na.rm = TRUE)
 df2$GarageYrBlt[is.na(df2$GarageYrBlt)] = 0
 ```
 
+
 ```{r}
 # Remove the values which are missing
 df2 <- na.omit(df2)
@@ -292,6 +293,9 @@ chars<-colnames(select_if(df_4, is.character))
 df_4[,chars] <- lapply(df_4[,chars], factor)
 str(df_4)
 ```
+
+
+
 
 ```{r}
 lapply(select_if(df_4, is.factor), table)

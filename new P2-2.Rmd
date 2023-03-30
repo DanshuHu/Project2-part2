@@ -180,7 +180,7 @@ plot(fit1)
 par(mfrow=c(1,2))
 qqnorm(d2$SalePrice, ylab = "SalePrice")
 qqline(d2$SalePrice)
-hist(d2$SalePrice, main = "SalePrice", xlab = "price" )
+hist(d2$SalePrice, main = "SalePrice", xlab = "price",breaks = 100)
 ```
 
 ### log-transformation
@@ -192,7 +192,7 @@ d5 <- d2%>%
   mutate(LogSalePrice = log(SalePrice))
 qqnorm(d5$LogSalePrice, ylab = "Log(SalePrice)")
 qqline(d5$LogSalePrice)
-hist(d5$LogSalePrice, main = "Log(SalePrice)", xlab = "price")
+hist(d5$LogSalePrice, main = "Log(SalePrice)", xlab = "price",breaks = 100)
 ```
 
 ```{r 15}
@@ -436,6 +436,16 @@ for (i in N4){
 summary(fit4_4)
 ME4_4 <- sum(ae4_4)/length(N4)
 ```
+```{r}
+
+ggplot( mapping = aes(y = pred4_2-df_41$SalePrice,x=1:dim(df_41)[1])) +
+    geom_point()
+```
+```{r}
+ggplot( mapping = aes(y = pred4_2,x=df_41$SalePrice)) +
+    geom_point()
+```
+
 
 
 
