@@ -240,4 +240,149 @@ summary(fit8)
 Mean_error5 <- sum(absolute_error5)/length(N)
 ```
 
+```{r}
+missing <- df2 %>% is.na() %>% colSums()
+sort(missing,decreasing = TRUE)
+```
+```{r}
+# Categorical vairbales
+# some NA entries in the data sets actually are not missing
+# etc. rather than representing a missing value. These values are replaced accordingly
+
+df2$Alley[is.na(df2$Alley)] = "No alley"
+df2$BsmtQual[is.na(df2$BsmtQual)] = "No basement"
+df2$BsmtCond[is.na(df2$BsmtCond)] = "No basement"
+df2$BsmtExposure[is.na(df2$BsmtExposure)] = "No basement"
+df2$BsmtFinType1[is.na(df2$BsmtFinType1)] = "No basement"
+df2$BsmtFinType2[is.na(df2$BsmtFinType2)] = "No basement"
+df2$FireplaceQu[is.na(df2$FireplaceQu)] = "No fireplace"
+df2$GarageType[is.na(df2$GarageType)] = "No garage"
+df2$GarageFinish[is.na(df2$GarageFinish)] = "No garage"
+df2$GarageQual[is.na(df2$GarageQual)] = "No garage"
+df2$GarageCond[is.na(df2$GarageCond)] = "No garage"
+df2$PoolQC[is.na(df2$PoolQC)] = "No pool"
+df2$Fence[is.na(df2$Fence)] = "No fence"
+df2$MiscFeature[is.na(df2$MiscFeature)] = "None"
+```
+
+```{r}
+# Numeric variables
+#replace missing values in LotFrontage column in training and test sets with median
+df2$LotFrontage[is.na(df2$LotFrontage)] = median(df2$LotFrontage, na.rm = TRUE)
+
+# Unfortunately some of the missing values cannot be reasonably estimated (e.g. the year in which the garage of a house was built)
+#replace missing values in GarageYrBlt column in training and test sets with 0
+df2$GarageYrBlt[is.na(df2$GarageYrBlt)] = 0
+```
+
+```{r}
+# Remove the values which are missing
+df2 <- na.omit(df2)
+df_4 <- subset(df2, select = -c(Id))
+chars<-colnames(select_if(df_4, is.character))
+df_4[,chars] <- lapply(df_4[,chars], factor)
+str(df_4)
+```
+
+```{r}
+lapply(select_if(df_4, is.factor), table)
+```
+
+```{r}
+match(c("PosA","RRAe","RRAn"),df_4$Condition2)
+
+match(c("ClyTile","Membran","Metal","Roll"),df_4$RoofMatl)
+
+match(c("AsphShn","CBlock","ImStucc"),df_4$Exterior1st)
+
+match(c("CBlock","Other"),df_4$Exterior2nd)
+
+match(c("Po"),df_4$ExterCond)
+
+match(c("Floor"),df_4$Heating)
+
+match(c("Po"),df_4$HeatingQC)
+
+match(c("Mix"),df_4$Electrical)
+
+match(c("Sev"),df_4$Functional)
+
+match(c("TenC"),df_4$MiscFeature)
+
+df_4 <- subset(df_4,select = c(-Utilities))
+  
+drop_num <- c(582,1225,998,1291,271,121,1269,1006,1363,1182,1363,594,250,1314,325,398,664,1378)
+N4 <- 1:dim(df_4)[1]
+N4 <- N4[-drop_num]
+
+```
+
+
+```{r model4-1}
+library(randomForest)
+# random forest
+pred4_3 <- numeric(dim(df_4)[1]-18)
+ae4_3 <- numeric(dim(df_4)[1]-18)
+for (i in N4){
+  fit4_3 <- randomForest(SalePrice ~ ., data=df_4)
+  pred4_3[i] <- predict(df_4[i,],fit4_3)
+  ae4_3[i] <- abs(pred4_3[i]-df_4$SalePrice[i])
+  }
+summary(fit4_3)
+ME4_3 <- sum(ae4_3)/length(N4)
+```
+
+
+
+```{r}
+intercepts <- lm(df_4$SalePrice ~ 1, data=df_4)
+full4 <- lm(df_4$SalePrice ~ ., data=df_4)
+forward4 <- stepAIC(intercepts,  scope=formula(full4), direction='forward', trace=F)
+
+df_41 <- forward4$model
+```
+
+```{r}
+names(df_41)[names(df_41) == "df_4$SalePrice"] <- "SalePrice"
+```
+
+
+```{r}
+lapply(select_if(df_41, is.factor), table)
+```
+
+```{r}
+match(c("PosA","RRAe","RRAn"),df_41$Condition2)
+
+match(c("ClyTile","Membran","Metal","Roll"),df_41$RoofMatl)
+
+match(c("AsphShn","CBlock","ImStucc"),df_41$Exterior1st)
+
+match(c("Sev"),df_41$Functional)
+  
+drop_num2 <- c(582,1225,998,1291,271,121,1269,1006,1363,1182,664)
+N4_2 <- 1:dim(df_41)[1]
+N4_2 <- N4_2[-drop_num2]
+
+```
+
+
+```{r }
+# variable selection
+pred4_2 <- numeric(dim(df_41)[1]-11)
+ae4_2 <- numeric(dim(df_41)[1]-11)
+for (i in N4_2){
+  fit4_2 <- lm(SalePrice~.,data=df_41[-i,])
+  pred4_2[i] <- predict(fit4_2,df_41[i,])
+  ae4_2[i] <- abs(pred4_2[i]-df_41$SalePrice[i])
+  }
+summary(fit4_2)
+ME4_2 <- sum(ae4_2)/length(N4_2)
+```
+
+```{r}
+set.seed(1)
+
+```
+
 
