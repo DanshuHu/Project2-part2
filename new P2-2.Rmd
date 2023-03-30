@@ -168,22 +168,24 @@ Mean_error3 <- sum(absolute_error3)/dim(d4)[1]
 ```
 
 # Section 3
-```{r 12}
+```{r 12, fig.height=3,fig.width=5}
 # check assumptions of model in part 1
 par(mfrow=c(2,2))
 plot(fit1)
 ```
-```{r 13}
+
+
+```{r 13, fig.height=1.5,fig.width=4}
 # check the normality of SalePrice
 par(mfrow=c(1,2))
 qqnorm(d2$SalePrice, ylab = "SalePrice")
 qqline(d2$SalePrice)
-hist(d2$SalePrice, main = "SalePrice", xlab = "price")
+hist(d2$SalePrice, main = "SalePrice", xlab = "price" )
 ```
 
 ### log-transformation
 
-```{r 14}
+```{r 14,fig.height=1.5,fig.width=4}
 par(mfrow=c(1,2))
 # add log
 d5 <- d2%>%
@@ -211,32 +213,26 @@ Mean_error4 <- sum(absolute_error4)/length(N)
 # Interaction
 
 ```{r 17}
-fit5 <-lm(LogSalePrice~(LotArea + Street + LotShape + LandContour + Neighborhood + BldgType + HouseStyle + OverallQual + OverallCond + YearBuilt + RoofStyle + Foundation + TotalBsmtSF + Heating + CentralAir + Electrical + GrLivArea + BedroomAbvGr + KitchenAbvGr + KitchenQual + TotRmsAbvGrd + Fireplaces + GarageType + GarageArea + MoSold + YrSold + TotalBath)*OverallQual, data = d5)
+fit5 <-lm(SalePrice~(LotArea + Street + LotShape + LandContour + Neighborhood + BldgType + HouseStyle + OverallQual + OverallCond + YearBuilt + RoofStyle + Foundation + TotalBsmtSF + Heating + CentralAir + Electrical + GrLivArea + BedroomAbvGr + KitchenAbvGr + KitchenQual + TotRmsAbvGrd + Fireplaces + GarageType + GarageArea + MoSold + YrSold + TotalBath)*OverallQual, data = d2)
 fit6 <- step(fit5, trace=F)
 summary(fit6)
 ```
 
 ```{r interaction-plot}
-# interaction between OverallQual and LandContour
-interact_plot(fit5, pred = OverallQual, modx = LandContour) + labs(y ="Log(SalePrice)", x = "Overall material and finish quality")
+# interaction between OverallQual and LotShape
+interact_plot(fit5, pred = OverallQual, modx = LotShape ) + labs(y ="SalePrice", x = "Overall material and finish quality")
 ```
 
 ### fit model with possible interation
 
-```{r 18}
-fit7 <-lm(LogSalePrice~LotArea + Street + LotShape + LandContour + Neighborhood + BldgType + HouseStyle + OverallQual + OverallCond + YearBuilt + RoofStyle + Foundation + TotalBsmtSF + Heating + CentralAir + Electrical + GrLivArea + BedroomAbvGr + KitchenAbvGr + KitchenQual + TotRmsAbvGrd + Fireplaces + GarageType + GarageArea + MoSold + YrSold + TotalBath + LandContour:OverallQual, data = d5)
-summary(fit7)
-formula <- formula(fit7)
-```
-
 ```{r 19}
 # perdiction performance of new model
-preds5 <- numeric(dim(d5)[1]-2)
-absolute_error5 <- numeric(dim(d5)[1]-2)
+preds5 <- numeric(dim(d2)[1]-2)
+absolute_error5 <- numeric(dim(d2)[1]-2)
 for (i in N){
-  fit8 <- lm(formula,data=d5[-i,])
-  preds5[i] <- predict(fit8,d5[i,])
-  absolute_error5[i] <- abs(exp(preds5[i])-exp(d5$LogSalePrice[i]))
+  fit8 <- lm(SalePrice~.+ LotShape:OverallQual  ,data=d2[-i,])
+  preds5[i] <- predict(fit8,d2[i,])
+  absolute_error5[i] <- abs(preds5[i]-d2$SalePrice[i])
   }
 summary(fit8)
 Mean_error5 <- sum(absolute_error5)/length(N)
@@ -307,6 +303,7 @@ chars<-colnames(select_if(df_4, is.character))
 df_4[,chars] <- lapply(df_4[,chars], factor)
 str(df_4)
 ```
+
 
 ```{r 26}
 lapply(select_if(df_4, is.factor), table)
@@ -408,7 +405,6 @@ ME4_2 <- sum(ae4_2)/length(N4_2)
 ```
 
 ## random forest
-
 ```{r 33}
 # peridict and check performance
 pred4_3 <- numeric(dim(df_4)[1]-18)
@@ -422,40 +418,25 @@ for (i in N4){
 summary(fit4_3)
 ME4_3 <- sum(ae4_3)/length(N4)
 ```
-
-
-## Lasso Regression
-
-```{r 34}
-y <- df_4$SalePrice
-x <- data.matrix(df_4[,-75])
-#perform k-fold cross-validation to find optimal lambda value
-cv_model <- cv.glmnet(x, y, alpha = 1, nfolds = 10)
-
-#find optimal lambda value that minimizes test MSE
-best_lambda <- cv_model$lambda.min
-best_lambda
-
-best_model <- glmnet(x, y, alpha = 1, standardize = TRUE, lambda = best_lambda)
-coef(best_model)
-
-n <- nrow(df_4) # number of observations
-
-# Initialize vectors to store predictions and errors
-pred <- rep(NA, n)
-error <- rep(NA, n)
-
-for (i in 1:n) {
-  # Split data into training and testing sets
-  x_train <- x[-i, ]
-  y_train <- y[-i]
-  x_test <- x[i, ]
-  
-  # Predict response for the current observation using the fitted model
-  pred[i] <- predict(best_model, newx = t(x_test))
-  
-  # Compute error for the current observation
-  error[i] <- abs(pred[i] - y[i])
-}
-ME4_4 <-mean(error)
+### Lasso Model
+```{r}
+# peridict and check performance
+pred4_4 <- numeric(dim(df_4)[1]-18)
+ae4_4 <- numeric(dim(df_4)[1]-18)
+for (i in N4){
+  y_train <- df_4$SalePrice[-i]
+  x_train <- data.matrix(df_4[-i,-75])
+  #perform k-fold cross-validation to find optimal lambda value
+  cv_model <- cv.glmnet(x_train, y_train, alpha = 1, nfolds = 10)
+  best_lambda <- cv_model$lambda.min
+  fit4_4 <- glmnet(x_train, y_train, alpha = 1, standardize = TRUE, lambda = best_lambda)
+  pred4_4[i] <- predict(fit4_4,s = best_lambda, newx = data.matrix(df_4[i,-75]))
+  ae4_4[i] <- abs(pred4_4[i]-df_4$SalePrice[i])
+  }
+summary(fit4_4)
+ME4_4 <- sum(ae4_4)/length(N4)
 ```
+
+
+
+
