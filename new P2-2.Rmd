@@ -446,6 +446,17 @@ ggplot( mapping = aes(y = pred4_2,x=df_41$SalePrice)) +
     geom_point()
 ```
 
+```{r impact-vars}
+##  select three most impact variables
+# forward selection
+intercepts5 <- lm(df_4$SalePrice ~ 1, data=df_4)
+full5 <- lm(df_4$SalePrice ~ ., data=df_4)
+forward5 <- stepAIC(intercepts5,  scope=formula(full5), steps = 3, direction='forward', trace=F)
+# data with selected variables
+df <- forward5$model
+df
+```
+
 
 
 
