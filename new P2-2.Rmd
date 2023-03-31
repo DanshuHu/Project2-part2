@@ -146,7 +146,6 @@ Mean_error2 <- sum(absolute_error2)/dim(d3)[1]
 ## Model 3
 
 ```{r 10}
-# best model
 ## more variables
 forward2 <- stepAIC(intercept_only, scope=formula(full), direction='forward', trace=F) 
 ```
@@ -362,6 +361,7 @@ full4 <- lm(df_4$SalePrice ~ ., data=df_4)
 forward4 <- stepAIC(intercepts,  scope=formula(full4), direction='forward', trace=F)
 # data with selected variables
 df_41 <- forward4$model
+forward4$anova
 ```
 
 ```{r 30}
@@ -436,15 +436,8 @@ for (i in N4){
 summary(fit4_4)
 ME4_4 <- sum(ae4_4)/length(N4)
 ```
-```{r}
 
-ggplot( mapping = aes(y = pred4_2-df_41$SalePrice,x=1:dim(df_41)[1])) +
-    geom_point()
-```
-```{r}
-ggplot( mapping = aes(y = pred4_2,x=df_41$SalePrice)) +
-    geom_point()
-```
+### Analysis Plots
 
 ```{r impact-vars}
 ##  select three most impact variables
@@ -457,6 +450,38 @@ df <- forward5$model
 df
 ```
 
+```{r p1}
+ggplot(d1,aes(x=factor(0),SalePrice))+geom_boxplot(width=0.5,fill = "#F4EDCA", color = "#000000")+
+    scale_x_discrete(breaks = NULL) +
+    xlab(NULL)+
+  theme_minimal() + coord_flip() +theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=14,face="bold"))
+```
+
+```{r LotFrontage-plot}
+ggplot(df2,aes(x=factor(0),LotFrontage))+geom_boxplot(width=0.5,fill = "#F4EDCA", color = "#000000")+
+    scale_x_discrete(breaks = NULL) +
+    xlab(NULL)+
+  theme_minimal() + coord_flip() +theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=14,face="bold"))
+
+hist(df2$LotFrontage, main = "LotFrontage", xlab = "feet ", breaks = 100)
+```
+
+```{r p2}
+ggplot(df_41, aes(x = factor(OverallQual), y = SalePrice, fill = as.factor(OverallQual)))+
+  geom_boxplot(show.legend = FALSE)+
+  theme_minimal()+ 
+  theme(axis.text=element_text(size=12),axis.title=element_text(size=14,face="bold"))+
+  scale_fill_brewer(palette="Set3")+
+  xlab("Overall Quality")
+
+ggplot(df_4, aes(x= GrLivArea, y= SalePrice))+
+  geom_point()+
+  theme_minimal()+ 
+  theme(axis.text=element_text(size=12),axis.title=element_text(size=14,face="bold"))+
+  scale_fill_brewer(palette="Set3")+xlab("Above ground living area (square feet)")
+```
 
 
 
